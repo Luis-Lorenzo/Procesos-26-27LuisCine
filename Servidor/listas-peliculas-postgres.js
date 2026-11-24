@@ -16,7 +16,7 @@ function mapearFila(fila) {
     cartel: fila.cartel ?? null,
     disponibleEnPlataformas: Boolean(fila.disponible_en_plataformas),
     plataformasCoincidentes: Array.isArray(fila.plataformas_coincidentes)
-      ? fila.plataformas_coincidentes
+      ? fila.plataformas_coincidentes.map(p => ({ ...p }))
       : [],
     recienDisponible: Boolean(fila.recien_disponible),
     actualizadoEn: fila.actualizado_en instanceof Date
@@ -56,8 +56,9 @@ export class ListasPeliculasPostgres {
   }
 
   async guardar(usuarioId, entrada, disponibilidadInicial = null) {
+    validarUsuarioLista(usuarioId);
+    const datos = validarElementoLista(entrada?.peliculaId, entrada);
     await this.comprobarUsuario(usuarioId);
-    const datos = validarElementoLista(entrada.peliculaId, entrada);
     const tieneDisponibilidad = disponibilidadInicial !== null;
     const disponible = tieneDisponibilidad ? Boolean(disponibilidadInicial.disponibleEnPlataformas) : false;
     const coincidentes = tieneDisponibilidad
@@ -83,6 +84,10 @@ export class ListasPeliculasPostgres {
            WHEN $9 THEN EXCLUDED.plataformas_coincidentes
            ELSE listas_peliculas.plataformas_coincidentes
          END,
+         recien_disponible = CASE
+           WHEN $9 AND NOT EXCLUDED.disponible_en_plataformas THEN FALSE
+           ELSE listas_peliculas.recien_disponible
+         END,
          actualizado_en = NOW()
        RETURNING pelicula_id, estado, titulo, anio, cartel,
                  disponible_en_plataformas, plataformas_coincidentes,
@@ -103,8 +108,9 @@ export class ListasPeliculasPostgres {
   }
 
   async eliminar(usuarioId, peliculaId) {
-    await this.comprobarUsuario(usuarioId);
+    validarUsuarioLista(usuarioId);
     const id = validarPeliculaIdLista(peliculaId);
+    await this.comprobarUsuario(usuarioId);
     const { rowCount } = await this.pool.query(
       "DELETE FROM listas_peliculas WHERE usuario_id = $1 AND pelicula_id = $2",
       [usuarioId, id]
@@ -115,8 +121,9 @@ export class ListasPeliculasPostgres {
   }
 
   async actualizarDisponibilidad(usuarioId, peliculaId, { disponibleEnPlataformas, plataformasCoincidentes }) {
-    await this.comprobarUsuario(usuarioId);
+    validarUsuarioLista(usuarioId);
     const id = validarPeliculaIdLista(peliculaId);
+    await this.comprobarUsuario(usuarioId);
     const ahoraDisponible = Boolean(disponibleEnPlataformas);
     const coincidentes = JSON.stringify(normalizarPlataformasCoincidentes(plataformasCoincidentes));
 

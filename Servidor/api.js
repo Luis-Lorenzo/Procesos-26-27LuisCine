@@ -152,6 +152,7 @@ function leerJSON(peticion) {
 }
 
 const NOMBRE_COOKIE = "cinematch_sesion";
+const TAMANO_LOTE_COMPROBACION = 10;
 const DURACION_SESION_SEGUNDOS = 8 * 60 * 60;
 
 function leerTokenSesion(peticion) {
@@ -500,6 +501,7 @@ async function exigirUsuario(peticion) {
           if (metodo !== "GET") return metodoNoPermitido(respuesta, "GET");
           const usuario = await exigirUsuario(peticion);
           actividad.usuarioId = usuario.id;
+          if (url.search) throw new ErrorListas("LISTA_INVALIDA", "La consulta de listas no admite parámetros.");
           return responderJSON(respuesta, 200, await listas.listar(usuario.id));
         }
 
@@ -508,25 +510,29 @@ async function exigirUsuario(peticion) {
           comprobarCabeceraCliente(peticion);
           const usuario = await exigirUsuario(peticion);
           actividad.usuarioId = usuario.id;
+          if (url.search) throw new ErrorListas("LISTA_INVALIDA", "La consulta de listas no admite parámetros.");
 
           const { elementos } = await listas.listar(usuario.id);
-          const pendientes = elementos.filter(item => item.estado === "quiero_ver").slice(0, 20);
+          const pendientes = elementos.filter(item => item.estado === "quiero_ver");
           let comprobadas = 0;
 
           if (disponibilidad && pendientes.length) {
-            await Promise.all(pendientes.map(async (item) => {
-              try {
-                const disp = await disponibilidad.obtener(String(item.peliculaId), usuario.id);
-                const coincidentes = extraerPlataformasIncluidas(disp);
-                await listas.actualizarDisponibilidad(usuario.id, item.peliculaId, {
-                  disponibleEnPlataformas: coincidentes.length > 0,
-                  plataformasCoincidentes: coincidentes
-                });
-                comprobadas += 1;
-              } catch {
-                // Si una película falla puntualmente en TMDB, no bloqueamos el resto de la lista.
-              }
-            }));
+            for (let inicio = 0; inicio < pendientes.length; inicio += TAMANO_LOTE_COMPROBACION) {
+              const lote = pendientes.slice(inicio, inicio + TAMANO_LOTE_COMPROBACION);
+              await Promise.all(lote.map(async (item) => {
+                try {
+                  const disp = await disponibilidad.obtener(String(item.peliculaId), usuario.id);
+                  const coincidentes = extraerPlataformasIncluidas(disp);
+                  await listas.actualizarDisponibilidad(usuario.id, item.peliculaId, {
+                    disponibleEnPlataformas: coincidentes.length > 0,
+                    plataformasCoincidentes: coincidentes
+                  });
+                  comprobadas += 1;
+                } catch {
+                  // Si una película falla puntualmente en TMDB, no bloqueamos el resto de la lista.
+                }
+              }));
+            }
           }
 
           const resultado = await listas.listar(usuario.id);

@@ -6,11 +6,7 @@ import {
   seccionesDisponibilidad,
   textoConsultadoEn
 } from "./disponibilidad.js";
-import {
-  contarNuevasDisponibles,
-  dividirListas,
-  textoAlertaDisponibilidad
-} from "./listas.js";
+import { crearControladorListas } from "./listas.js";
 import {
   confirmarCorreo,
   reenviarConfirmacion,
@@ -25,11 +21,7 @@ import {
   eliminarUsuario,
   buscarPeliculas,
   obtenerDetallePelicula,
-  obtenerDisponibilidadPelicula,
-  obtenerListasPeliculas,
-  guardarEnListaPeliculas,
-  eliminarDeListaPeliculas,
-  comprobarDisponibilidadListas
+  obtenerDisponibilidadPelicula
 } from "./rest.js";
 import {
   TEXTO_ANIO_AUSENTE,
@@ -138,8 +130,27 @@ let reintentoBusqueda = null;
 let detallePendiente = null;
 let disponibilidadPendiente = null;
 let focoDetalle = null;
-let elementosListas = [];
-let cargandoListas = false;
+const controladorListas = crearControladorListas({
+  panelListas,
+  botonComprobarListas,
+  alertaListas,
+  estadoListas,
+  contadorQuieroVer,
+  contadorVistas,
+  vacioQuieroVer,
+  vacioVistas,
+  listaQuieroVer,
+  listaVistas,
+  botonQuieroVer,
+  botonMarcarVista,
+  botonQuitarLista,
+  estadoListaDetalle
+}, {
+  estaOcupado: () => ocupado,
+  obtenerDetalleActual: () => estadoCatalogoUI.detalle,
+  abrirDetalle: (pelicula, boton) => abrirDetalle(pelicula, boton),
+  alCaducar: () => volverAlAccesoPorSesion()
+});
 const selectorPlataformas = crearSelectorPlataformas(document.getElementById("panel-plataformas"), {
   estaOcupado: () => ocupado,
   alCaducar: () => volverAlAccesoPorSesion(),
@@ -147,7 +158,7 @@ const selectorPlataformas = crearSelectorPlataformas(document.getElementById("pa
     if (estadoCatalogoUI.detalle && !detalleContenido.hidden) {
       void cargarDisponibilidad(estadoCatalogoUI.detalle.id);
     }
-    void comprobarListas({ silencioso: true });
+    void controladorListas.comprobar({ silencioso: true });
   }
 });
 
@@ -164,6 +175,7 @@ function cambiarOcupado(valor) {
   });
 
   selectorPlataformas.actualizarControles();
+  controladorListas.actualizarControles();
   formRegistro.setAttribute("aria-busy", String(valor));
   formLogin.setAttribute("aria-busy", String(valor));
   actualizarControlesCatalogo();
@@ -181,13 +193,7 @@ function mostrarUsuario(usuario) {
 
   panelAdmin.hidden = usuario?.rol !== "administrador";
   panelCatalogo.hidden = !usuario;
-  panelListas.hidden = !usuario;
-  if (!usuario) {
-    elementosListas = [];
-    renderizarListas();
-  } else if (cambiaUsuario) {
-    void cargarListas();
-  }
+  controladorListas.cambiarUsuario(usuario);
   rolUsuario.textContent = usuario ? `Rol: ${usuario.rol}` : "";
   listaUsuarios.replaceChildren();
   estadoListado.textContent = "";
@@ -568,249 +574,9 @@ function renderizarDetalle(ficha) {
   detalleContenido.hidden = false;
   estadoDetalle.textContent = "";
   ocultarErrorDetalle();
-  actualizarBotonesListaDetalle();
+  controladorListas.actualizarControles();
   actualizarControlesCatalogo();
 }
-
-function obtenerElementoEnLista(peliculaId) {
-  return elementosListas.find(item => item.peliculaId === peliculaId) ?? null;
-}
-
-function actualizarBotonesListaDetalle() {
-  const ficha = estadoCatalogoUI.detalle;
-  const enLista = ficha ? obtenerElementoEnLista(ficha.id) : null;
-  const habilitado = Boolean(usuarioActual) && !ocupado && !cargandoListas && Boolean(ficha);
-
-  botonQuieroVer.disabled = !habilitado || enLista?.estado === "quiero_ver";
-  botonMarcarVista.disabled = !habilitado || enLista?.estado === "vistas";
-  botonQuitarLista.hidden = !enLista;
-  botonQuitarLista.disabled = !habilitado || !enLista;
-
-  if (!enLista) {
-    estadoListaDetalle.textContent = "";
-  } else if (enLista.estado === "quiero_ver") {
-    const alerta = textoAlertaDisponibilidad(enLista);
-    estadoListaDetalle.textContent = alerta
-      ? `En tu lista "Quiero ver". ${alerta}.`
-      : 'Guardada en tu lista "Quiero ver".';
-  } else {
-    estadoListaDetalle.textContent = 'Marcada en tu lista "Vistas".';
-  }
-}
-
-function crearItemListaPersonal(elemento) {
-  const li = document.createElement("li");
-  li.className = "item-lista-personal";
-  if (elemento.estado === "quiero_ver" && elemento.disponibleEnPlataformas) {
-    li.classList.add("es-disponible");
-  }
-
-  const cabecera = document.createElement("div");
-  cabecera.className = "item-lista-cabecera";
-
-  const info = document.createElement("div");
-  const titulo = document.createElement("p");
-  titulo.className = "item-lista-titulo";
-  titulo.textContent = textoTitulo(elemento.titulo);
-
-  const anio = document.createElement("span");
-  anio.className = "item-lista-anio";
-  anio.textContent = textoAnio(elemento.anio);
-
-  info.append(titulo, anio);
-  cabecera.append(info);
-
-  const textoAlerta = elemento.estado === "quiero_ver"
-    ? textoAlertaDisponibilidad(elemento)
-    : "";
-  if (textoAlerta) {
-    const badge = document.createElement("span");
-    badge.className = "badge-disponible";
-    badge.textContent = textoAlerta;
-    cabecera.append(badge);
-  }
-
-  const acciones = document.createElement("div");
-  acciones.className = "item-lista-acciones";
-
-  const botonVerFicha = document.createElement("button");
-  botonVerFicha.type = "button";
-  botonVerFicha.className = "boton boton-secundario";
-  botonVerFicha.textContent = "Ver ficha";
-  botonVerFicha.addEventListener("click", () => {
-    abrirDetalle({ id: elemento.peliculaId, titulo: elemento.titulo }, botonVerFicha);
-  });
-
-  const botonMover = document.createElement("button");
-  botonMover.type = "button";
-  botonMover.className = "boton boton-secundario";
-  const nuevoEstado = elemento.estado === "quiero_ver" ? "vistas" : "quiero_ver";
-  botonMover.textContent = nuevoEstado === "vistas" ? "Marcar vista" : "Mover a Quiero ver";
-  botonMover.addEventListener("click", () => {
-    void guardarElementoEnLista({
-      peliculaId: elemento.peliculaId,
-      titulo: elemento.titulo,
-      anio: elemento.anio,
-      cartel: elemento.cartel
-    }, nuevoEstado);
-  });
-
-  const botonEliminarLista = document.createElement("button");
-  botonEliminarLista.type = "button";
-  botonEliminarLista.className = "boton boton-peligro";
-  botonEliminarLista.textContent = "Quitar";
-  botonEliminarLista.addEventListener("click", () => {
-    void quitarElementoDeLista(elemento.peliculaId);
-  });
-
-  acciones.append(botonVerFicha, botonMover, botonEliminarLista);
-  li.append(cabecera, acciones);
-  return li;
-}
-
-function renderizarListas() {
-  const { quieroVer, vistas } = dividirListas(elementosListas);
-  contadorQuieroVer.textContent = String(quieroVer.length);
-  contadorVistas.textContent = String(vistas.length);
-  vacioQuieroVer.hidden = quieroVer.length > 0;
-  vacioVistas.hidden = vistas.length > 0;
-
-  listaQuieroVer.replaceChildren(...quieroVer.map(crearItemListaPersonal));
-  listaVistas.replaceChildren(...vistas.map(crearItemListaPersonal));
-
-  const nuevas = contarNuevasDisponibles(elementosListas);
-  const disponibles = quieroVer.filter(item => item.disponibleEnPlataformas).length;
-  if (nuevas > 0) {
-    alertaListas.hidden = false;
-    alertaListas.textContent = nuevas === 1
-      ? "¡1 película de tu lista 'Quiero ver' ya está disponible en tus plataformas!"
-      : `¡${nuevas} películas de tu lista 'Quiero ver' ya están disponibles en tus plataformas!`;
-  } else if (disponibles > 0) {
-    alertaListas.hidden = false;
-    alertaListas.textContent = disponibles === 1
-      ? "Tienes 1 película de 'Quiero ver' incluida en tus plataformas."
-      : `Tienes ${disponibles} películas de 'Quiero ver' incluidas en tus plataformas.`;
-  } else {
-    alertaListas.hidden = true;
-    alertaListas.textContent = "";
-  }
-
-  botonComprobarListas.disabled = ocupado || cargandoListas || quieroVer.length === 0;
-  actualizarBotonesListaDetalle();
-}
-
-async function cargarListas() {
-  if (!usuarioActual) return;
-  cargandoListas = true;
-  estadoListas.textContent = "Cargando tus listas...";
-  renderizarListas();
-  try {
-    const respuesta = await obtenerListasPeliculas();
-    if (!usuarioActual) return;
-    elementosListas = respuesta.elementos ?? [];
-    estadoListas.textContent = "";
-  } catch (error) {
-    if (error?.estado === 401) {
-      volverAlAccesoPorSesion();
-      return;
-    }
-    estadoListas.textContent = error?.message ?? "No se pudieron cargar tus listas.";
-  } finally {
-    cargandoListas = false;
-    renderizarListas();
-  }
-}
-
-async function guardarElementoEnLista(pelicula, estadoDestino) {
-  if (!usuarioActual || ocupado || cargandoListas) return;
-  cargandoListas = true;
-  estadoListas.textContent = "Guardando en tu lista...";
-  renderizarListas();
-  try {
-    const { elemento } = await guardarEnListaPeliculas(pelicula.peliculaId ?? pelicula.id, {
-      estado: estadoDestino,
-      titulo: pelicula.titulo,
-      anio: pelicula.anio ?? null,
-      cartel: pelicula.cartel ?? null
-    });
-    const indice = elementosListas.findIndex(item => item.peliculaId === elemento.peliculaId);
-    if (indice >= 0) elementosListas[indice] = elemento;
-    else elementosListas.unshift(elemento);
-    estadoListas.textContent = "";
-  } catch (error) {
-    if (error?.estado === 401) {
-      volverAlAccesoPorSesion();
-      return;
-    }
-    estadoListas.textContent = error?.message ?? "No se pudo guardar la película.";
-  } finally {
-    cargandoListas = false;
-    renderizarListas();
-  }
-}
-
-async function quitarElementoDeLista(peliculaId) {
-  if (!usuarioActual || ocupado || cargandoListas) return;
-  cargandoListas = true;
-  estadoListas.textContent = "Quitando de tu lista...";
-  renderizarListas();
-  try {
-    await eliminarDeListaPeliculas(peliculaId);
-    elementosListas = elementosListas.filter(item => item.peliculaId !== peliculaId);
-    estadoListas.textContent = "";
-  } catch (error) {
-    if (error?.estado === 401) {
-      volverAlAccesoPorSesion();
-      return;
-    }
-    estadoListas.textContent = error?.message ?? "No se pudo quitar la película.";
-  } finally {
-    cargandoListas = false;
-    renderizarListas();
-  }
-}
-
-async function comprobarListas({ silencioso = false } = {}) {
-  if (!usuarioActual || cargandoListas) return;
-  const hayPendientes = elementosListas.some(item => item.estado === "quiero_ver");
-  if (!hayPendientes) return;
-
-  cargandoListas = true;
-  if (!silencioso) estadoListas.textContent = "Comprobando disponibilidad en tus plataformas...";
-  renderizarListas();
-  try {
-    const respuesta = await comprobarDisponibilidadListas();
-    if (!usuarioActual) return;
-    elementosListas = respuesta.elementos ?? [];
-    if (!silencioso) {
-      estadoListas.textContent = "Disponibilidad actualizada.";
-    }
-  } catch (error) {
-    if (error?.estado === 401) {
-      volverAlAccesoPorSesion();
-      return;
-    }
-    if (!silencioso) {
-      estadoListas.textContent = error?.message ?? "No se pudo comprobar la disponibilidad.";
-    }
-  } finally {
-    cargandoListas = false;
-    renderizarListas();
-  }
-}
-
-botonQuieroVer.addEventListener("click", () => {
-  if (estadoCatalogoUI.detalle) void guardarElementoEnLista(estadoCatalogoUI.detalle, "quiero_ver");
-});
-botonMarcarVista.addEventListener("click", () => {
-  if (estadoCatalogoUI.detalle) void guardarElementoEnLista(estadoCatalogoUI.detalle, "vistas");
-});
-botonQuitarLista.addEventListener("click", () => {
-  if (estadoCatalogoUI.detalle) void quitarElementoDeLista(estadoCatalogoUI.detalle.id);
-});
-botonComprobarListas.addEventListener("click", () => {
-  void comprobarListas();
-});
 
 function volverAlAccesoPorSesion() {
   mostrarUsuario(null);
@@ -975,6 +741,7 @@ function cerrarDetalle({ restaurarFoco = true } = {}) {
 
   const busqueda = estadoCatalogoUI.busqueda;
   resultados.hidden = !busqueda || busqueda.peliculas.length === 0;
+  controladorListas.actualizarControles();
   actualizarControlesCatalogo();
 
   const destino = focoDetalle;

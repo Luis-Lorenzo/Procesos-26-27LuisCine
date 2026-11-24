@@ -129,18 +129,31 @@ const disponibilidad = {
     if (!pelicula) throw new Error("Película no encontrada.");
     const prefs = await preferencias.obtener(uid);
     const seleccion = new Set(prefs.plataformas);
-    const suscripcion = pelicula.suscripcion.map(p => ({ ...p, incluida: seleccion.has(p.id) }));
+    const incluidas = pelicula.suscripcion.filter(p => seleccion.has(p.id));
+    const sinDatos = pelicula.suscripcion.length === 0 &&
+      pelicula.alquiler.length === 0 &&
+      pelicula.compra.length === 0 &&
+      pelicula.gratis.length === 0 &&
+      pelicula.anuncios.length === 0;
+    let mensaje = null;
+    if (seleccion.size === 0) {
+      mensaje = "Selecciona al menos una plataforma para comprobar si está incluida en tus suscripciones.";
+    } else if (sinDatos || incluidas.length === 0) {
+      mensaje = "No consta disponibilidad en tus suscripciones en España.";
+    }
     return {
       id: pelicula.id,
       region: "ES",
-      seleccionadas: prefs.plataformas,
-      suscripcion,
+      consultadoEn: new Date().toISOString(),
+      sinDatos,
+      incluidas,
+      suscripcion: pelicula.suscripcion,
       alquiler: pelicula.alquiler,
       compra: pelicula.compra,
       gratis: pelicula.gratis,
       anuncios: pelicula.anuncios,
-      consultadoEn: new Date().toISOString(),
-      enlace: "https://www.themoviedb.org/"
+      enlace: "https://www.themoviedb.org/",
+      mensaje
     };
   }
 };

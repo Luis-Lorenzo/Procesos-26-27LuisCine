@@ -85,14 +85,7 @@ export function normalizarPlataformasCoincidentes(lista) {
 }
 
 export function extraerPlataformasIncluidas(disponibilidad) {
-  const suscripcion = Array.isArray(disponibilidad?.suscripcion) ? disponibilidad.suscripcion : [];
-  return suscripcion
-    .filter(proveedor => proveedor?.incluida === true)
-    .map(proveedor => ({
-      id: proveedor.id,
-      nombre: proveedor.nombre,
-      logo: proveedor.logo ?? null
-    }));
+  return normalizarPlataformasCoincidentes(disponibilidad?.incluidas);
 }
 
 function clonarElemento(elemento) {
@@ -121,14 +114,18 @@ export class ListasPeliculas {
     const mapa = this.listas.get(usuarioId);
     if (!mapa) return { elementos: [] };
     const elementos = [...mapa.values()]
-      .sort((a, b) => new Date(b.actualizadoEn).getTime() - new Date(a.actualizadoEn).getTime())
+      .sort((a, b) =>
+        (new Date(b.actualizadoEn).getTime() - new Date(a.actualizadoEn).getTime()) ||
+        (a.peliculaId - b.peliculaId)
+      )
       .map(clonarElemento);
     return { elementos };
   }
 
   async guardar(usuarioId, entrada, disponibilidadInicial = null) {
+    validarUsuarioLista(usuarioId);
+    const datos = validarElementoLista(entrada?.peliculaId, entrada);
     await this.comprobarUsuario(usuarioId);
-    const datos = validarElementoLista(entrada.peliculaId, entrada);
     let mapa = this.listas.get(usuarioId);
     if (!mapa) {
       mapa = new Map();
@@ -151,7 +148,7 @@ export class ListasPeliculas {
       cartel: datos.cartel,
       disponibleEnPlataformas: disponible,
       plataformasCoincidentes: coincidentes,
-      recienDisponible: previo?.recienDisponible ?? false,
+      recienDisponible: disponible ? (previo?.recienDisponible ?? false) : false,
       actualizadoEn: new Date().toISOString()
     };
 
@@ -160,8 +157,9 @@ export class ListasPeliculas {
   }
 
   async eliminar(usuarioId, peliculaId) {
-    await this.comprobarUsuario(usuarioId);
+    validarUsuarioLista(usuarioId);
     const id = validarPeliculaIdLista(peliculaId);
+    await this.comprobarUsuario(usuarioId);
     const mapa = this.listas.get(usuarioId);
     if (!mapa || !mapa.delete(id)) {
       throw new ErrorListas("ELEMENTO_NO_ENCONTRADO", "La película no está en tu lista.");
@@ -169,8 +167,9 @@ export class ListasPeliculas {
   }
 
   async actualizarDisponibilidad(usuarioId, peliculaId, { disponibleEnPlataformas, plataformasCoincidentes }) {
-    await this.comprobarUsuario(usuarioId);
+    validarUsuarioLista(usuarioId);
     const id = validarPeliculaIdLista(peliculaId);
+    await this.comprobarUsuario(usuarioId);
     const mapa = this.listas.get(usuarioId);
     const previo = mapa?.get(id);
     if (!previo) return null;
