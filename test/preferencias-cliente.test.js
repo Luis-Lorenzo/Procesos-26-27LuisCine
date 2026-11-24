@@ -69,6 +69,17 @@ test("selector: catálogos y preferencias inválidos no se interpretan como vac�
   }
 });
 
+test("selector: el catálogo conserva logos seguros y descarta los demás", () => {
+  const logo = "https://image.tmdb.org/t/p/w500/netflix.jpg";
+  const catalogo = leerCatalogoPlataformas(respuesta([
+    { id: 1, nombre: "A", logo },
+    { id: 2, nombre: "B", logo: null },
+    { id: 3, nombre: "C" },
+    { id: 4, nombre: "D", logo: "https://example.com/t/p/w500/x.jpg" }
+  ]));
+  assert.deepEqual(catalogo.map(p => p.logo), [logo, null, null, null]);
+});
+
 test("selector: guarda IDs ausentes, distingue fallo de catálogo y filtra sin acentos", () => {
   const catalogo = leerCatalogoPlataformas(respuesta([{ id: 20, nombre: "Ciné Club" }, { id: 10, nombre: "Otra" }]));
   const opciones = opcionesPlataformas(catalogo, [99]);

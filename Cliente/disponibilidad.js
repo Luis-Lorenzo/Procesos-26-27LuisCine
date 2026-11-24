@@ -145,6 +145,15 @@ export function leerDisponibilidad(datos, idEsperado) {
   };
 }
 
+// Datos que la interfaz pinta de un proveedor: el nombre siempre se muestra
+// y el logo solo si es una URL segura de TMDB.
+export function proveedorVisible(proveedor) {
+  return {
+    nombre: proveedor?.nombre,
+    logo: urlCartelSegura(proveedor?.logo)
+  };
+}
+
 export function textoConsultadoEn(consultadoEn) {
   const fecha = new Date(consultadoEn);
 

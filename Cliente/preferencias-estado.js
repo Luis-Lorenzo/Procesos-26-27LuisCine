@@ -1,3 +1,5 @@
+import { urlCartelSegura } from "./catalogo.js";
+
 function idsValidos(ids) {
   if (!Array.isArray(ids) || Array.from(ids).some(id =>
     !Number.isInteger(id) || id < 1 || id > 2147483647)) {
@@ -22,7 +24,11 @@ export function leerCatalogoPlataformas(respuesta) {
         /[\u0000-\u001f\u007f-\u009f]/.test(plataforma.nombre)) {
       throw new Error("El catálogo de plataformas no es válido.");
     }
-    unicas.set(plataforma.id, { id: plataforma.id, nombre: plataforma.nombre.trim() });
+    unicas.set(plataforma.id, {
+      id: plataforma.id,
+      nombre: plataforma.nombre.trim(),
+      logo: urlCartelSegura(plataforma.logo)
+    });
   }
   return [...unicas.values()].sort((a, b) => a.nombre.localeCompare(b.nombre, "es") || a.id - b.id);
 }

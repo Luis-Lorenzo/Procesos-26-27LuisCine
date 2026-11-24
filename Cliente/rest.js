@@ -146,6 +146,17 @@ export function reenviarConfirmacion(email) {
   return realizarPeticion("/api/confirmacion/reenviar", { metodo: "POST", datos: { email } });
 }
 
+export function solicitarRecuperacion(email) {
+  return realizarPeticion("/api/password/solicitar", { metodo: "POST", datos: { email } });
+}
+
+export function restablecerPassword(token, password) {
+  return realizarPeticion("/api/password/restablecer", {
+    metodo: "POST",
+    datos: { token, password }
+  });
+}
+
 export function buscarPeliculas({ titulo, anio, pagina } = {}) {
   const parametros = new URLSearchParams();
 

@@ -3,6 +3,7 @@ import {
   TEXTO_DISPONIBILIDAD_CARGANDO,
   TEXTO_DISPONIBILIDAD_FUENTE,
   crearEstadoDisponibilidad,
+  proveedorVisible,
   seccionesDisponibilidad,
   textoConsultadoEn
 } from "./disponibilidad.js";
@@ -10,6 +11,8 @@ import { crearControladorListas } from "./listas.js";
 import {
   confirmarCorreo,
   reenviarConfirmacion,
+  solicitarRecuperacion,
+  restablecerPassword,
   prepararAccesoGoogle,
   obtenerEstadoServidor,
   registrarUsuario,
@@ -44,8 +47,12 @@ import {
 const enlaceInicial = new URL(window.location.href);
 const fragmento = new URLSearchParams(enlaceInicial.hash.slice(1));
 let tokenConfirmacion = fragmento.get("confirmar");
-if (tokenConfirmacion !== null) {
+let tokenRecuperacion = fragmento.get("recuperar");
+if (tokenConfirmacion !== null || tokenRecuperacion !== null) {
   window.history.replaceState(null, "", enlaceInicial.pathname + enlaceInicial.search);
+}
+if (tokenRecuperacion !== null && !/^[a-f0-9]{64}$/.test(tokenRecuperacion)) {
+  tokenRecuperacion = null;
 }
 const estado = document.getElementById("estado");
 const estadoSesion = document.getElementById("estado-sesion");
@@ -59,6 +66,21 @@ const formLogin = document.getElementById("form-login");
 const botonSalir = document.getElementById("cerrar-sesion");
 const botonReintentar = document.getElementById("reintentar");
 const botonEliminar = document.getElementById("eliminar-cuenta");
+
+const abrirRecuperacion = document.getElementById("abrir-recuperacion");
+const formRecuperacion = document.getElementById("form-recuperacion");
+const recuperacionEmail = document.getElementById("recuperacion-email");
+const cancelarRecuperacion = document.getElementById("cancelar-recuperacion");
+const estadoRecuperacion = document.getElementById("estado-recuperacion");
+const errorRecuperacion = document.getElementById("error-recuperacion");
+const panelRestablecer = document.getElementById("panel-restablecer");
+const formRestablecer = document.getElementById("form-restablecer");
+const restablecerCampoPassword = document.getElementById("restablecer-password");
+const restablecerCampoRepetir = document.getElementById("restablecer-repetir");
+const guardarRestablecer = document.getElementById("guardar-restablecer");
+const cancelarRestablecer = document.getElementById("cancelar-restablecer");
+const estadoRestablecer = document.getElementById("estado-restablecer");
+const errorRestablecer = document.getElementById("error-restablecer");
 
 const panelAdmin = document.getElementById("panel-admin");
 const rolUsuario = document.getElementById("rol-usuario");
@@ -123,6 +145,8 @@ const estadoCatalogoUI = crearEstadoCatalogo();
 const estadoDisponibilidadUI = crearEstadoDisponibilidad();
 let usuarioActual = null;
 let ocupado = false;
+let solicitudRecuperacion = 0;
+let solicitudRestablecer = 0;
 let cargandoBusqueda = false;
 let cargandoDetalle = false;
 let cargandoDisponibilidad = false;
@@ -178,6 +202,8 @@ function cambiarOcupado(valor) {
   controladorListas.actualizarControles();
   formRegistro.setAttribute("aria-busy", String(valor));
   formLogin.setAttribute("aria-busy", String(valor));
+  formRecuperacion.setAttribute("aria-busy", String(valor));
+  formRestablecer.setAttribute("aria-busy", String(valor));
   actualizarControlesCatalogo();
 }
 
@@ -223,6 +249,93 @@ async function comprobarServidor() {
   } catch {
     estado.textContent = "No se pudo conectar con el servidor.";
   }
+}
+
+function ocultarErrorRecuperacion() {
+  errorRecuperacion.textContent = "";
+  errorRecuperacion.hidden = true;
+}
+
+function mostrarErrorRecuperacion(texto) {
+  errorRecuperacion.textContent = texto;
+  errorRecuperacion.hidden = false;
+}
+
+function ocultarErrorRestablecer() {
+  errorRestablecer.textContent = "";
+  errorRestablecer.hidden = true;
+}
+
+function mostrarErrorRestablecer(texto) {
+  errorRestablecer.textContent = texto;
+  errorRestablecer.hidden = false;
+}
+
+function cerrarFormularioRecuperacion() {
+  solicitudRecuperacion++;
+  formRecuperacion.reset();
+  formRecuperacion.hidden = true;
+  abrirRecuperacion.hidden = false;
+  estadoRecuperacion.textContent = "";
+  ocultarErrorRecuperacion();
+  abrirRecuperacion.focus();
+}
+
+function mostrarPanelRestablecer() {
+  panelRestablecer.hidden = false;
+  acceso.hidden = true;
+  panelUsuario.hidden = true;
+  estadoRestablecer.textContent = "";
+  ocultarErrorRestablecer();
+  guardarRestablecer.disabled = false;
+  restablecerCampoPassword.focus();
+}
+
+function cerrarPanelRestablecer() {
+  solicitudRestablecer++;
+  tokenRecuperacion = null;
+  formRestablecer.reset();
+  restablecerCampoPassword.setCustomValidity("");
+  restablecerCampoRepetir.setCustomValidity("");
+  panelRestablecer.hidden = true;
+  estadoRestablecer.textContent = "";
+  ocultarErrorRestablecer();
+  mostrarUsuario(usuarioActual);
+  document.getElementById("login-email").focus();
+}
+
+function validarPasswordRestablecer() {
+  const password = restablecerCampoPassword.value;
+  const repetir = restablecerCampoRepetir.value;
+  const longitud = [...password].length;
+
+  restablecerCampoPassword.setCustomValidity(
+    longitud >= 8 && longitud <= 128
+      ? ""
+      : "La contraseña debe tener entre 8 y 128 caracteres."
+  );
+  restablecerCampoRepetir.setCustomValidity(
+    password === repetir ? "" : "Las contraseñas no coinciden."
+  );
+
+  if (longitud < 8 || longitud > 128) {
+    mostrarErrorRestablecer("La contraseña debe tener entre 8 y 128 caracteres.");
+    restablecerCampoPassword.setAttribute("aria-invalid", "true");
+    restablecerCampoPassword.focus();
+    return false;
+  }
+
+  if (password !== repetir) {
+    mostrarErrorRestablecer("Las contraseñas no coinciden.");
+    restablecerCampoRepetir.setAttribute("aria-invalid", "true");
+    restablecerCampoRepetir.focus();
+    return false;
+  }
+
+  restablecerCampoPassword.removeAttribute("aria-invalid");
+  restablecerCampoRepetir.removeAttribute("aria-invalid");
+  ocultarErrorRestablecer();
+  return true;
 }
 
 async function recuperarSesion() {
@@ -333,8 +446,27 @@ function crearGrupoDisponibilidad(seccion) {
   const lista = document.createElement("ul");
 
   for (const proveedor of seccion.proveedores) {
+    const visible = proveedorVisible(proveedor);
     const elemento = document.createElement("li");
-    elemento.textContent = proveedor.nombre;
+
+    if (visible.logo) {
+      const logo = document.createElement("img");
+      logo.className = "logo-proveedor";
+      logo.src = visible.logo;
+      logo.alt = "";
+      logo.width = 24;
+      logo.height = 24;
+      logo.loading = "lazy";
+      logo.decoding = "async";
+      logo.referrerPolicy = "no-referrer";
+      // Si el logo falla, el nombre sigue siendo suficiente.
+      logo.addEventListener("error", () => logo.remove(), { once: true });
+      elemento.append(logo);
+    }
+
+    const nombre = document.createElement("span");
+    nombre.textContent = visible.nombre;
+    elemento.append(nombre);
     lista.append(elemento);
   }
 
@@ -1051,6 +1183,7 @@ async function iniciarInterfaz() {
   }
   comprobarServidor();
   await recuperarSesion();
+  if (tokenRecuperacion !== null) mostrarPanelRestablecer();
   if (tokenConfirmacion !== null) {
     document.getElementById("panel-confirmacion").hidden = false;
     if (!/^[a-f0-9]{64}$/.test(tokenConfirmacion)) {
@@ -1067,6 +1200,119 @@ async function iniciarInterfaz() {
   if (resultado === "correcto" && usuarioActual) mostrarMensaje("Sesión iniciada con Google.");
   else if (resultado && Object.hasOwn(mensajes, resultado)) mostrarMensaje(mensajes[resultado], true);
 }
+
+abrirRecuperacion.addEventListener("click", () => {
+  if (ocupado) return;
+  ocultarErrorRecuperacion();
+  estadoRecuperacion.textContent = "";
+  formRecuperacion.hidden = false;
+  abrirRecuperacion.hidden = true;
+  recuperacionEmail.focus();
+});
+
+cancelarRecuperacion.addEventListener("click", () => {
+  if (ocupado) return;
+  cerrarFormularioRecuperacion();
+});
+
+formRecuperacion.addEventListener("submit", async evento => {
+  evento.preventDefault();
+
+  if (ocupado) return;
+
+  const solicitud = ++solicitudRecuperacion;
+
+  ocultarErrorRecuperacion();
+  estadoRecuperacion.textContent = "Solicitando enlace...";
+  cambiarOcupado(true);
+
+  try {
+    const respuesta = await solicitarRecuperacion(recuperacionEmail.value);
+
+    if (solicitud !== solicitudRecuperacion) return;
+
+    estadoRecuperacion.textContent = respuesta.mensaje;
+    recuperacionEmail.value = "";
+  } catch (error) {
+    if (solicitud !== solicitudRecuperacion) return;
+
+    estadoRecuperacion.textContent = "";
+    mostrarErrorRecuperacion(
+      error?.message ?? "No se pudo solicitar el enlace de recuperación."
+    );
+    errorRecuperacion.focus();
+  } finally {
+    if (solicitud === solicitudRecuperacion) cambiarOcupado(false);
+  }
+});
+
+restablecerCampoPassword.addEventListener("input", () => {
+  restablecerCampoPassword.setCustomValidity("");
+  restablecerCampoPassword.removeAttribute("aria-invalid");
+});
+
+restablecerCampoRepetir.addEventListener("input", () => {
+  restablecerCampoRepetir.setCustomValidity("");
+  restablecerCampoRepetir.removeAttribute("aria-invalid");
+});
+
+cancelarRestablecer.addEventListener("click", () => {
+  if (ocupado) return;
+  cerrarPanelRestablecer();
+});
+
+formRestablecer.addEventListener("submit", async evento => {
+  evento.preventDefault();
+
+  if (ocupado || !tokenRecuperacion) return;
+  if (!validarPasswordRestablecer()) return;
+
+  const solicitud = ++solicitudRestablecer;
+  const password = restablecerCampoPassword.value;
+  let exito = false;
+  let tokenInvalido = false;
+
+  estadoRestablecer.textContent = "Guardando contraseña...";
+  ocultarErrorRestablecer();
+  cambiarOcupado(true);
+
+  try {
+    const respuesta = await restablecerPassword(tokenRecuperacion, password);
+
+    if (solicitud !== solicitudRestablecer) return;
+
+    exito = true;
+    tokenRecuperacion = null;
+    formRestablecer.reset();
+    restablecerCampoPassword.setCustomValidity("");
+    restablecerCampoRepetir.setCustomValidity("");
+    panelRestablecer.hidden = true;
+    estadoRestablecer.textContent = "";
+    mostrarUsuario(null);
+    mostrarMensaje(respuesta.mensaje);
+  } catch (error) {
+    if (solicitud !== solicitudRestablecer) return;
+
+    estadoRestablecer.textContent = "";
+
+    if (error?.codigo === "RECUPERACION_INVALIDA") {
+      tokenRecuperacion = null;
+      tokenInvalido = true;
+    }
+
+    mostrarErrorRestablecer(
+      error?.message ?? "No se pudo restablecer la contraseña."
+    );
+    errorRestablecer.focus();
+  } finally {
+    if (solicitud === solicitudRestablecer) {
+      cambiarOcupado(false);
+      if (tokenInvalido) guardarRestablecer.disabled = true;
+      if (exito) document.getElementById("login-email").focus();
+    }
+  }
+});
+
 document.getElementById("form-reenvio").addEventListener("submit", async evento => {
   evento.preventDefault();
   if (ocupado) return;

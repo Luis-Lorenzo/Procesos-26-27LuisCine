@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   crearEstadoDisponibilidad,
   leerDisponibilidad,
+  proveedorVisible,
   seccionesDisponibilidad,
   textoConsultadoEn,
   urlEnlaceDisponibilidadSegura
@@ -53,6 +54,26 @@ test("cliente disponibilidad: normaliza una respuesta válida y ordena por ID", 
   assert.equal(datos.suscripcion[0].logo, "https://image.tmdb.org/t/p/w500/netflix.jpg");
   assert.equal(datos.enlace, "https://www.themoviedb.org/movie/550-fight-club/watch?locale=ES");
   assert.equal(datos.mensaje, null);
+});
+
+test("cliente disponibilidad: proveedorVisible conserva el nombre y solo admite logos seguros", () => {
+  const logo = "https://image.tmdb.org/t/p/w500/netflix.jpg";
+
+  assert.deepEqual(proveedorVisible(proveedor(10, "Netflix", logo)), { nombre: "Netflix", logo });
+  assert.deepEqual(proveedorVisible(proveedor(10, "Netflix", null)), { nombre: "Netflix", logo: null });
+
+  for (const insegura of [
+    "http://image.tmdb.org/t/p/w500/netflix.jpg",
+    "https://example.com/t/p/w500/netflix.jpg",
+    "https://image.tmdb.org/t/p/w500/netflix.jpg?x=1",
+    "javascript:alert(1)",
+    undefined
+  ]) {
+    assert.deepEqual(
+      proveedorVisible(proveedor(10, "Netflix", insegura)),
+      { nombre: "Netflix", logo: null }
+    );
+  }
 });
 
 test("cliente disponibilidad: rechaza respuestas malformadas o incongruentes", () => {

@@ -7,6 +7,7 @@ import { ErrorDetallePelicula } from "./detalle-pelicula.js";
 import { ErrorDisponibilidadPelicula } from "./disponibilidad-pelicula.js";
 import { ErrorCatalogoTMDB } from "./catalogo-tmdb.js";
 import { ErrorConfirmacion } from "./confirmaciones.js";
+import { ErrorRecuperacion, MENSAJE_SOLICITUD_RECUPERACION } from "./recuperaciones.js";
 import { ErrorOAuth, crearValorOAuth } from "./google-oauth.js";
 import { IntentosOAuth } from "./intentos-oauth.js";
 import { randomUUID } from "node:crypto";
@@ -212,6 +213,17 @@ function comprobarCabeceraCliente(peticion) {
   }
 }
 
+function exigirCamposExactos(cuerpo, campos) {
+  const claves = Object.keys(cuerpo);
+
+  if (
+    claves.length !== campos.length ||
+    claves.some(clave => !campos.includes(clave))
+  ) {
+    throw new ErrorHTTP(400, "El cuerpo no es válido.");
+  }
+}
+
 const PARAMETROS_BUSQUEDA = new Set(["titulo", "anio", "pagina"]);
 
 function leerConsultaBusqueda(url) {
@@ -241,6 +253,7 @@ export function crearAplicacion({
   datos = new DatosUsuarios(),
   google = null,
   confirmaciones = null,
+  recuperaciones = null,
   intentosOAuth = new IntentosOAuth(),
   sesiones = new Sesiones({ duracionMs: DURACION_SESION_SEGUNDOS * 1000 }),
   registrarActividad = crearRegistroActividad(),
@@ -406,6 +419,35 @@ async function exigirUsuario(peticion) {
         await confirmaciones.solicitar(cuerpo.email);
         return responderJSON(respuesta, 200, {
           mensaje: "Si la cuenta está pendiente y no has superado el límite de envíos, recibirás un correo. Revisa también spam. Espera al menos 60 segundos antes de solicitar otro."
+        });
+      }
+
+      if (ruta === "/api/password/solicitar" || ruta === "/api/password/restablecer") {
+        if (metodo !== "POST") return metodoNoPermitido(respuesta, "POST");
+        comprobarCabeceraCliente(peticion);
+        if (!recuperaciones) {
+          throw new ErrorHTTP(503, "La recuperación de contraseña no está disponible temporalmente.");
+        }
+        if (url.search) {
+          throw new ErrorHTTP(400, "Esta ruta no admite parámetros de consulta.");
+        }
+
+        const cuerpo = await leerJSON(peticion);
+
+        if (ruta === "/api/password/solicitar") {
+          exigirCamposExactos(cuerpo, ["email"]);
+          await recuperaciones.solicitar(cuerpo.email);
+          evento = "recuperacion_solicitada";
+          return responderJSON(respuesta, 202, {
+            mensaje: MENSAJE_SOLICITUD_RECUPERACION
+          });
+        }
+
+        exigirCamposExactos(cuerpo, ["token", "password"]);
+        await recuperaciones.restablecer(cuerpo.token, cuerpo.password);
+        evento = "password_restablecida";
+        return responderJSON(respuesta, 200, {
+          mensaje: "Contraseña actualizada. Inicia sesión con tu nueva contraseña."
         });
       }
 
@@ -893,6 +935,9 @@ async function exigirUsuario(peticion) {
       }
 
       if (error instanceof ErrorConfirmacion) {
+        return responderJSON(respuesta, error.estado, { error: error.message, codigo: error.codigo });
+      }
+      if (error instanceof ErrorRecuperacion) {
         return responderJSON(respuesta, error.estado, { error: error.message, codigo: error.codigo });
       }
       if (error instanceof ErrorHTTP) {

@@ -41,6 +41,55 @@
       <p id="resultado-confirmacion" class="mensaje-local" role="status" aria-live="polite"></p>
     </section>
 
+    <section id="panel-restablecer" class="tarjeta tarjeta-restablecer" hidden aria-labelledby="titulo-restablecer">
+      <p class="etiqueta">Seguridad</p>
+      <h2 id="titulo-restablecer">Nueva contraseña</h2>
+      <p>Elige una contraseña nueva para tu cuenta. El enlace solo se puede usar una vez.</p>
+
+      <form id="form-restablecer" novalidate>
+        <div class="campo">
+          <label for="restablecer-password">Nueva contraseña</label>
+          <input
+            id="restablecer-password"
+            name="password"
+            type="password"
+            autocomplete="new-password"
+            aria-describedby="ayuda-restablecer"
+            required
+          >
+          <button type="button" class="boton-revelar" data-password="restablecer-password" aria-controls="restablecer-password" aria-pressed="false" aria-label="Mostrar contraseña"><span data-texto>Mostrar contraseña</span></button>
+        </div>
+
+        <div class="campo">
+          <label for="restablecer-repetir">Repite la nueva contraseña</label>
+          <input
+            id="restablecer-repetir"
+            name="repetir"
+            type="password"
+            autocomplete="new-password"
+            aria-describedby="ayuda-restablecer"
+            required
+          >
+          <button type="button" class="boton-revelar" data-password="restablecer-repetir" aria-controls="restablecer-repetir" aria-pressed="false" aria-label="Mostrar contraseña"><span data-texto>Mostrar contraseña</span></button>
+        </div>
+
+        <p id="ayuda-restablecer" class="ayuda">
+          Entre 8 y 128 caracteres. Debes repetir exactamente la misma contraseña.
+        </p>
+        <p id="estado-restablecer" class="mensaje-local" role="status" aria-live="polite"></p>
+        <p id="error-restablecer" class="error" role="alert" hidden></p>
+
+        <div class="acciones-formulario">
+          <button id="guardar-restablecer" type="submit" class="boton boton-primario">
+            Guardar contraseña
+          </button>
+          <button id="cancelar-restablecer" type="button" class="boton boton-secundario">
+            Volver al inicio de sesión
+          </button>
+        </div>
+      </form>
+    </section>
+
     <div id="acceso" class="acceso" hidden>
       <section class="tarjeta acceso-login" aria-labelledby="titulo-login">
         <p class="etiqueta">Acceso</p>
@@ -84,6 +133,35 @@
 
           <div class="acciones-formulario">
             <button type="submit" class="boton boton-primario">Entrar</button>
+          </div>
+        </form>
+
+        <p class="olvido-password">
+          <button id="abrir-recuperacion" class="boton boton-enlace" type="button">
+            ¿Has olvidado tu contraseña?
+          </button>
+        </p>
+
+        <form id="form-recuperacion" hidden aria-labelledby="titulo-recuperacion">
+          <h3 id="titulo-recuperacion">Recuperar contraseña</h3>
+          <p>Escribe el correo de tu cuenta local y te enviaremos un enlace.</p>
+          <div class="campo">
+            <label for="recuperacion-email">Correo electrónico</label>
+            <input
+              id="recuperacion-email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              required
+            >
+          </div>
+          <p id="estado-recuperacion" class="mensaje-local" role="status" aria-live="polite"></p>
+          <p id="error-recuperacion" class="error" role="alert" hidden></p>
+          <div class="acciones-formulario">
+            <button type="submit" class="boton boton-primario">Enviar enlace</button>
+            <button id="cancelar-recuperacion" class="boton boton-secundario" type="button">
+              Cancelar
+            </button>
           </div>
         </form>
       </section>

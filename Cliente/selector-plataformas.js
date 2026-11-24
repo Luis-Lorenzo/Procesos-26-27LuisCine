@@ -51,7 +51,21 @@ export function crearSelectorPlataformas(panel, { estaOcupado, alCaducar, alGuar
         actualizarResumen();
         actualizarControles();
       });
-      etiqueta.append(checkbox, texto);
+      etiqueta.append(checkbox);
+      if (plataforma.logo) {
+        const logo = document.createElement("img");
+        logo.className = "logo-proveedor logo-proveedor-grande";
+        logo.src = plataforma.logo;
+        logo.alt = "";
+        logo.width = 32;
+        logo.height = 32;
+        logo.loading = "lazy";
+        logo.decoding = "async";
+        logo.referrerPolicy = "no-referrer";
+        logo.addEventListener("error", () => logo.remove(), { once: true });
+        etiqueta.append(logo);
+      }
+      etiqueta.append(texto);
       lista.append(etiqueta);
     }
     cantidad.textContent = visibles.length ? `${visibles.length} ${visibles.length === 1 ? "plataforma mostrada" : "plataformas mostradas"}` :

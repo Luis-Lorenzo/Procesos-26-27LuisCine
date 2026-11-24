@@ -28,6 +28,16 @@ export function crearCorreo(env = process.env, crearTransporte = nodemailer.crea
           "Si no solicitaste esta cuenta, ignora este mensaje."
       });
       if (!resultado.accepted?.length) throw new Error("CORREO_NO_ENVIADO");
+    },
+    async enviarRecuperacion({ email, enlace }) {
+      const resultado = await transporte.sendMail({
+        from: { name: "CineMatch", address: usuario }, to: { address: email },
+        subject: "Restablece tu contraseña de CineMatch",
+        text: "Para elegir una nueva contraseña de CineMatch, abre este enlace:\n\n" +
+          enlace + "\n\nEl enlace caduca en 30 minutos y solo puede utilizarse una vez. " +
+          "Si no solicitaste este cambio, ignora este mensaje; tu contraseña no cambiará."
+      });
+      if (!resultado.accepted?.length) throw new Error("CORREO_NO_ENVIADO");
     }
   };
 }

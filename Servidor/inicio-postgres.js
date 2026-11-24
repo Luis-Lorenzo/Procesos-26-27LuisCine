@@ -8,6 +8,8 @@ import { crearCatalogoTMDB } from "./catalogo-tmdb.js";
 import { crearCorreo } from "./correo.js";
 import { Confirmaciones } from "./confirmaciones.js";
 import { ConfirmacionesPostgres } from "./confirmaciones-postgres.js";
+import { Recuperaciones } from "./recuperaciones.js";
+import { RecuperacionesPostgres } from "./recuperaciones-postgres.js";
 import { crearGoogleOAuth } from "./google-oauth.js";
 import { SesionesPostgres } from "./sesiones-postgres.js";
 import { IntentosOAuthPostgres } from "./intentos-oauth.js";
@@ -32,9 +34,14 @@ try {
   await pool.query("SELECT id FROM limite_correo LIMIT 0");
   await pool.query("SELECT usuario_id, region, proveedor_id FROM preferencias_plataformas LIMIT 0");
   await pool.query("SELECT usuario_id, pelicula_id FROM listas_peliculas LIMIT 0");
+  await pool.query("SELECT usuario_id, token_hash FROM recuperaciones_password LIMIT 0");
   const correo = crearCorreo();
   const confirmaciones = new Confirmaciones({ repositorio: new ConfirmacionesPostgres(pool),
     correo, urlPublica: correo.urlPublica, registrarActividad });
+  const recuperaciones = new Recuperaciones({
+    repositorio: new RecuperacionesPostgres(pool),
+    correo, urlPublica: correo.urlPublica, registrarActividad
+  });
   const datos = new DatosUsuariosPostgres(pool);
   const tokenTmdb = process.env.TMDB_READ_ACCESS_TOKEN;
   const adaptadorTmdb = typeof tokenTmdb === "string" && tokenTmdb.trim()
@@ -48,7 +55,7 @@ const preferencias = new PreferenciasPlataformasPostgres(pool);
   const disponibilidad = adaptadorTmdb
     ? crearServicioDisponibilidad(adaptadorTmdb, preferencias)
     : null;
-  const aplicacion = crearAplicacion({ datos, confirmaciones, registrarActividad, google: crearGoogleOAuth(),
+  const aplicacion = crearAplicacion({ datos, confirmaciones, recuperaciones, registrarActividad, google: crearGoogleOAuth(),
     sesiones: new SesionesPostgres(pool), intentosOAuth: new IntentosOAuthPostgres(pool), catalogo, detalle, disponibilidad, plataformas, preferencias, listas });
   servidor = aplicacion.servidor;
 

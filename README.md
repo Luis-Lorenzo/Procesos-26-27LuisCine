@@ -243,6 +243,8 @@ antiguas. El detalle se cierra con Escape o con **Volver a resultados**.
   (`buy`), gratis (`free`) y anuncios (`ads`).
 - `incluidas` solo contiene proveedores de suscripción cuyo ID coincide con una
   plataforma seleccionada. No se agrupan marcas, canales ni nombres parecidos.
+- Cada proveedor se muestra con su logo cuando TMDB lo facilita y es una URL
+  segura de `image.tmdb.org`; si no hay logo o no carga, se muestra solo el nombre.
 - Si no hay datos o coincidencias, se informa de que no consta disponibilidad en
   las suscripciones; no se afirma que la película no se pueda ver.
 - Un fallo de disponibilidad no impide consultar la ficha.

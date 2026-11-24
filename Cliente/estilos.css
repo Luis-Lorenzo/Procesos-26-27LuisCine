@@ -435,6 +435,41 @@ button:disabled {
   text-align: center;
 }
 
+.olvido-password {
+  margin: 14px 0 0;
+  text-align: center;
+}
+
+.boton-enlace {
+  min-height: auto;
+  padding: 4px 6px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--coral-fuerte);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.boton-enlace:hover:not(:disabled) {
+  border-color: transparent;
+  background: transparent;
+  color: var(--texto);
+}
+
+#form-recuperacion {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--borde);
+}
+
+#form-recuperacion h3 {
+  margin: 0 0 8px;
+}
+
+.tarjeta-restablecer {
+  max-width: 640px;
+}
+
 .boton-revelar {
   min-height: var(--objetivo);
   margin-top: 8px;
@@ -755,11 +790,22 @@ button:disabled {
 }
 
 .grupo-disponibilidad li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 4px 10px;
   border: 1px solid var(--borde);
   border-radius: 999px;
   color: var(--texto-suave);
   font-size: 0.9rem;
+}
+
+.logo-proveedor {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  object-fit: cover;
 }
 
 .atribucion-disponibilidad,
@@ -855,6 +901,16 @@ button:disabled {
 .opcion-plataforma:focus-within {
   outline: 3px solid var(--coral);
   outline-offset: 2px;
+}
+
+.opcion-plataforma .logo-proveedor-grande {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.opcion-plataforma {
+  align-items: center;
 }
 
 .opcion-plataforma input {

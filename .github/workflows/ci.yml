@@ -72,6 +72,9 @@ jobs:
           docker exec -i "${{ job.services.postgres.id }}" \
             psql -U cinematch -d cinematch_test -v ON_ERROR_STOP=1 \
             < sql/007-listas-peliculas.sql
+          docker exec -i "${{ job.services.postgres.id }}" \
+            psql -U cinematch -d cinematch_test -v ON_ERROR_STOP=1 \
+            < sql/008-recuperacion-password.sql
 
       - name: Ejecutar las pruebas existentes
         run: npm test

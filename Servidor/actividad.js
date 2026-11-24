@@ -2,7 +2,10 @@
 const MENSAJES = Object.freeze({
   confirmacion_enviada: "Correo de confirmación aceptado por el servidor de correo.",
   cuenta_confirmada: "Cuenta confirmada por correo.",
-  error_correo: "No se pudo enviar el correo de confirmación.",
+  recuperacion_enviada: "Correo de recuperación aceptado por el servidor de correo.",
+  recuperacion_solicitada: "Solicitud de recuperación procesada.",
+  password_restablecida: "Contraseña restablecida y sesiones revocadas.",
+  error_correo: "No se pudo enviar un correo de CineMatch.",
   peticion_http: "Petición HTTP completada.",
   peticion_interrumpida: "La conexión se cerró antes de completar la respuesta.",
   usuario_registrado: "Cuenta registrada pendiente de confirmación.",
@@ -29,6 +32,7 @@ const MENSAJES = Object.freeze({
 const RUTAS = new Set([
   "/", "/gui.js", "/rest.js", "/api/health", "/api/registro", "/api/login",
   "/api/confirmacion", "/api/confirmacion/reenviar",
+  "/api/password/solicitar", "/api/password/restablecer",
   "/api/auth/google", "/api/auth/google/callback",
   "/api/logout", "/api/sesion", "/api/perfil", "/api/usuarios", "/api/peliculas",
   "/api/plataformas", "/api/preferencias/plataformas", "/api/listas", "/api/listas/comprobar", "/api/listas/:id", "/api/peliculas/:id", "/api/peliculas/:id/disponibilidad", "/api/usuarios/:id", "/api/usuarios/:id/activo", "/listas.js", "otra"
@@ -44,7 +48,7 @@ const DIAGNOSTICOS_OAUTH = new Set([
 const CODIGOS = new Set([
   "NOMBRE_INVALIDO", "EMAIL_INVALIDO", "PASSWORD_INVALIDA", "EMAIL_DUPLICADO",
   "USUARIO_NO_ENCONTRADO", "USUARIO_ELIMINADO", "CREDENCIALES_INVALIDAS",
-  "CONFIRMACION_INVALIDA", "CONFIGURACION_CORREO_INVALIDA", "CORREO_NO_ENVIADO",
+  "CONFIRMACION_INVALIDA", "RECUPERACION_INVALIDA", "CONFIGURACION_CORREO_INVALIDA", "CORREO_NO_ENVIADO",
   "EAUTH", "ECONNECTION", "ESOCKET", "EENVELOPE",
   "OAUTH_INVALIDO", "OAUTH_CUENTA_EXISTENTE",
   "SESION_INVALIDA", "PERMISO_DENEGADO", "CONFIGURACION_INVALIDA",
